@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Planning sur mesure - Calage sur image</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ========== VARIABLES PAR DÉFAUT (modifiables via config) ========== */
+        :root {
+            --bg-image: none;
+            --bg-color: #f0f2f5;
+            --logo-left: 40px;
+            --logo-top: 20px;
+            --logo-visible: flex;
+            --logo-width: 70px;
+            --logo-bg: #e0e0e0;
+            --logo-color: #333;
+            
+            --title-left: 130px;
+            --title-top: 20px;
+            --title-visible: block;
+            --title-color: #1a1a1e;
+            --title-size: 28px;
+            
+            --admin-left: 130px;
+            --admin-top: 80px;
+            --admin-visible: flex;
+            --admin-bg: #f0f0f0;
+            --admin-text: #333;
+            
+            --buttons-left: auto;
+            --buttons-top: 20px;
+            --buttons-visible: flex;
+            
+            --grid-left: 20px;
+            --grid-top: 200px;
+            --grid-bg: rgba(255,255,255,0.7);
+            --grid-border: #ccc;
+            --grid-text: #1a1a1e;
+            
+            --rules-left: 20px;
+            --rules-top: auto;
+            --rules-visible: block;
+            --rules-width: calc(100% - 40px);
+            --rules-bg: #fafafa;
+            --rules-border: #ddd;
+            --rules-text: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #2c2c2e;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            background: var(--bg-color);
+            background-image: var(--bg-image);
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+            min-height: 850px;
+            border: 1px solid #aaa;
+            overflow: hidden;
+        }
+
+        /* ========== ÉLÉMENTS MODIFIABLES (positions définies en JS) ========== */
+        .config-mode .logo-area,
+        .config-mode .title-info,
+        .config-mode .admin-selector,
+        .config-mode .controls {
+            position: absolute;
+            z-index: 100;
+            background: rgba(200,200,200,0.2);
+            border-radius: 12px;
+            padding: 4px 8px;
+            cursor: grab;
+            border: 1px dashed #888;
+        }
+        .config-mode .logo-area:active,
+        .config-mode .title-info:active,
+        .config-mode .admin-selector:active,
+        .config-mode .controls:active {
+            cursor: grabbing;
+        }
+
+        .logo-area {
+            display: var(--logo-visible);
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-icon {
+            width: var(--logo-width);
+            height: var(--logo-width);
+            background: var(--logo-bg);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: calc(var(--logo-width) * 0.5);
+            color: var(--logo-color);
+        }
+
+        .title-info {
+            display: var(--title-visible);
+        }
+        .clan-name {
+            font-size: var(--title-size);
+            font-weight: 800;
+            color: var(--title-color);
+        }
+        .clan-slogan {
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .date-admin {
+            font-size: 14px;
+            color: #555;
+            margin-top: 8px;
+        }
+
+        .admin-selector {
+            display: var(--admin-visible);
+            align-items: center;
+            gap: 8px;
+            background: var(--admin-bg);
+            padding: 6px 12px;
+            border-radius: 40px;
+            color: var(--admin-text);
+        }
+        .admin-dropdown {
+            background: white;
+            border: 1px solid #ccc;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .controls {
+            display: var(--buttons-visible);
+            gap: 12px;
+            margin-left: auto;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            transition: 0.2s;
+        }
+        .btn-primary { background: #2c7da0; color: white; border: none; }
+        .btn-danger { background: #e07c7c; color: white; border: none; }
+
+        /* Planning (grille) */
+        .planning-container {
+            position: absolute;
+            left: var(--grid-left);
+            top: var(--grid-top);
+            right: 20px;
+            overflow-x: auto;
+            background: var(--grid-bg);
+            border-radius: 16px;
+            padding: 10px;
+        }
+        .planning-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 700px;
+        }
+        .days-header {
+            display: grid;
+            grid-template-columns: 100px repeat(6, 1fr);
+            gap: 8px;
+        }
+        .day-cell {
+            background: var(--grid-bg);
+            padding: 10px;
+            text-align: center;
+            border-radius: 12px;
+            font-weight: 700;
+            border: 1px solid var(--grid-border);
+            color: var(--grid-text);
+        }
+        .time-slot-row {
+            display: grid;
+            grid-template-columns: 100px repeat(6, 1fr);
+            gap: 8px;
+        }
+        .time-label {
+            background: var(--grid-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            border-radius: 12px;
+            border: 1px solid var(--grid-border);
+            color: var(--grid-text);
+        }
+        .activity-card {
+            background: var(--grid-bg);
+            border-radius: 12px;
+            padding: 10px;
+            min-height: 100px;
+            border: 1px solid var(--grid-border);
+            cursor: pointer;
+            position: relative;
+            color: var(--grid-text);
+        }
+        .activity-card.empty { display: flex; justify-content: center; align-items: center; opacity: 0.7; }
+        .activity-name { font-weight: 600; text-align: center; }
+        .activity-tag {
+            position: absolute;
+            bottom: 6px;
+            left: 6px;
+            right: 6px;
+            font-size: 11px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 6px;
+            padding: 2px;
+            text-align: center;
+            color: white;
+        }
+        .gear-icon {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(0,0,0,0.3);
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+        }
+        .activity-card:hover .gear-icon { opacity: 1; }
+
+        /* Règles */
+        .rules-section {
+            position: absolute;
+            left: var(--rules-left);
+            top: var(--rules-top);
+            width: var(--rules-width);
+            background: var(--rules-bg);
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid var(--rules-border);
+            color: var(--rules-text);
+            display: var(--rules-visible);
+            margin-top: 20px;
+        }
+        .rules-title { font-weight: 800; margin-bottom: 8px; }
+        .rules-list { display: flex; flex-direction: column; gap: 8px; }
+        .rule-item {
+            padding: 8px;
+            border-left: 4px solid;
+            background: rgba(0,0,0,0.05);
+        }
+
+        /* Modale (identique aux précédentes) */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 20px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 24px; color: #1a1a1e; }
+        .modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .close-modal { background: none; border: none; font-size: 24px; cursor: pointer; }
+        .modal-body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 6px; }
+        select, input, textarea { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ccc; }
+        .color-preview { display: flex; gap: 8px; margin-top: 8px; }
+        .color-option { width: 32px; height: 32px; border-radius: 8px; cursor: pointer; border: 1px solid #aaa; }
+        .slider-container { display: flex; align-items: center; gap: 8px; }
+        .slider-value { min-width: 45px; text-align: center; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 10px 16px; border-radius: 8px; z-index: 1100; }
+
+        /* Panneau de configuration */
+        .config-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 80px;
+            width: 360px;
+            background: #fff;
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 1001;
+            border: 1px solid #ccc;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .config-panel.active { display: flex; }
+        .config-group {
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .config-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+        }
+        .config-row label { width: 110px; font-size: 13px; }
+        input[type="range"] { flex: 1; margin: 0 8px; }
+        input[type="color"] { width: 50px; }
+        .checkbox-label { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+        .config-panel button {
+            background: #2c7da0;
+            border: none;
+            padding: 8px;
+            border-radius: 30px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .css-output {
+            background: #f0f0f0;
+            padding: 8px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow: auto;
+        }
+        .toggle-config-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #2c7da0;
+            border: none;
+            font-size: 28px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1002;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .config-mode .toggle-config-btn { background: #e07c7c; }
+
+        /* Capture PNG */
+        .capture-mode .btn-primary, .capture-mode .btn-danger, .capture-mode .gear-icon,
+        .capture-mode .admin-selector, .capture-mode .toggle-config-btn, .capture-mode .config-panel {
+            opacity: 0 !important; pointer-events: none !important; visibility: hidden !important;
+        }
+        @media (max-width: 768px) {
+            .modal-body { grid-template-columns: 1fr; }
+            .config-panel { width: 300px; right: 70px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container" id="appContainer">
+    <!-- Éléments modifiables -->
+    <div class="logo-area" id="logoArea"><div class="logo-icon">⚒️</div></div>
+    <div class="title-info" id="titleInfo">
+        <div class="clan-name">Nom du clan</div>
+        <div class="clan-slogan">Slogan</div>
+        <div class="date-admin" id="dateAdminTitle">📅 Planning du -- au --</div>
+    </div>
+    <div class="admin-selector" id="adminSelector">
+        <span class="admin-label">Organisé par :</span>
+        <select class="admin-dropdown" id="adminSelect">
+            <option>Chill</option><option>Ital</option><option>Rysing</option>
+            <option>Darkdoudu</option><option>Atlas</option><option>Aranwe</option>
+            <option>Titou</option>
+        </select>
+    </div>
+    <div class="controls" id="controlsBlock">
+        <button class="btn btn-primary" id="exportBtn">📸 Exporter PNG</button>
+        <button class="btn btn-danger" id="resetBtn">🗑️ Reset</button>
+    </div>
+
+    <!-- Grille planning -->
+    <div class="planning-container" id="planningContainer">
+        <div class="planning-grid">
+            <div class="days-header" id="daysHeader"></div>
+            <div id="planningGrid"></div>
+        </div>
+    </div>
+
+    <!-- Zone règles -->
+    <div class="rules-section" id="rulesSection" style="display: none;">
+        <div class="rules-title">📜 Règles</div>
+        <div class="rules-list" id="rulesList"></div>
+    </div>
+</div>
+
+<!-- Bouton config & panneau -->
+<button class="toggle-config-btn" id="toggleConfigBtn">⚙️</button>
+<div class="config-panel" id="configPanel">
+    <h3>🔧 Personnalisation complète</h3>
+    <div class="config-group">
+        <div class="config-row"><label>Image de fond</label><input type="text" id="bgImageUrl" placeholder="URL ou chemin image" style="width:180px;"><button id="applyBgBtn">Appliquer</button></div>
+        <div class="config-row"><label>Couleur fond</label><input type="color" id="bgColor" value="#f0f2f5"></div>
+    </div>
+    <div class="config-group">
+        <div class="config-row"><label>Logo X</label><input type="range" id="logoX" min="0" max="800"><span id="logoXval"></span></div>
+        <div class="config-row"><label>Logo Y</label><input type="range" id="logoY" min="0" max="600"><span id="logoYval"></span></div>
+        <div class="config-row"><label>Taille logo</label><input type="range" id="logoSize" min="30" max="120"><span id="logoSizeVal"></span></div>
+        <div class="config-row"><label>Couleur fond logo</label><input type="color" id="logoBg"><span style="width:30px"></span></div>
+        <div class="config-row"><label>Couleur icône</label><input type="color" id="logoColor"></div>
+        <label class="checkbox-label"><input type="checkbox" id="logoVisible"> Afficher logo</label>
+    </div>
+    <div class="config-group">
+        <div class="config-row"><label>Titre X</label><input type="range" id="titleX" min="0" max="800"><span id="titleXval"></span></div>
+        <div class="config-row"><label>Titre Y</label><input type="range" id="titleY" min="0" max="600"><span id="titleYval"></span></div>
+        <div class="config-row"><label>Taille titre</label><input type="range" id="titleSize" min="16" max="48"><span id="titleSizeVal"></span></div>
+        <div class="config-row"><label>Couleur titre</label><input type="color" id="titleColor"></div>
+        <label class="checkbox-label"><input type="checkbox" id="titleVisible"> Afficher titre</label>
+    </div>
+    <div class="config-group">
+        <div class="config-row"><label>Admin X</label><input type="range" id="adminX" min="0" max="800"><span id="adminXval"></span></div>
+        <div class="config-row"><label>Admin Y</label><input type="range" id="adminY" min="0" max="600"><span id="adminYval"></span></div>
+        <div class="config-row"><label>Fond admin</label><input type="color" id="adminBg"></div>
+        <div class="config-row"><label>Texte admin</label><input type="color" id="adminText"></div>
+        <label class="checkbox-label"><input type="checkbox" id="adminVisible"> Afficher admin</label>
+    </div>
+    <div class="config-group">
+        <div class="config-row"><label>Boutons Y</label><input type="range" id="buttonsY" min="0" max="600"><span id="buttonsYval"></span></div>
+        <label class="checkbox-label"><input type="checkbox" id="buttonsVisible"> Afficher boutons</label>
+    </div>
+    <div class="config-group">
+        <div class="config-row"><label>Grille X</label><input type="range" id="gridX" min="0" max="800"><span id="gridXval"></span></div>
+        <div class="config-row"><label>Grille Y</label><input type="range" id="gridY" min="0" max="800"><span id="gridYval"></span></div>
+        <div class="config-row"><label>Fond grille</label><input type="color" id="gridBg"></div>
+        <div class="config-row"><label>Bordure grille</label><input type="color" id="gridBorder"></div>
+        <div class="config-row"><label>Texte grille</label><input type="color" id="gridText"></div>
+    </div>
+    <div class="config-group">
+        <div class="config-row"><label>Règles X</label><input type="range" id="rulesX" min="0" max="800"><span id="rulesXval"></span></div>
+        <div class="config-row"><label>Règles Y</label><input type="range" id="rulesY" min="0" max="900"><span id="rulesYval"></span></div>
+        <div class="config-row"><label>Largeur règles</label><input type="range" id="rulesWidth" min="200" max="1500"><span id="rulesWidthVal"></span></div>
+        <div class="config-row"><label>Fond règles</label><input type="color" id="rulesBg"></div>
+        <div class="config-row"><label>Bordure règles</label><input type="color" id="rulesBorder"></div>
+        <div class="config-row"><label>Texte règles</label><input type="color" id="rulesText"></div>
+        <label class="checkbox-label"><input type="checkbox" id="rulesVisible"> Afficher règles</label>
+    </div>
+    <button id="copyCssBtn">📋 Copier le code CSS</button>
+    <div class="css-output" id="cssOutput"></div>
+    <button id="closeConfigBtn">Fermer</button>
+</div>
+
+<!-- Inputs dates cachées -->
+<input type="date" id="startDateInput" style="display: none;">
+<input type="date" id="endDateInput" style="display: none;">
+
+<!-- Modale édition activité (contenu identique à avant) -->
+<div class="modal" id="modal">
+    <div class="modal-content">
+        <div class="modal-header"><h2>✏️ Éditer l'activité</h2><button class="close-modal" id="closeModal">✕</button></div>
+        <div class="modal-body">
+            <div>
+                <div class="form-group"><label>Type</label><select id="activityType"><option value="raid">Raid</option><option value="donjon">Donjon</option><option value="custom">Personnalisée</option><option value="libre">Libre</option></select></div>
+                <div class="form-group"><label>Activité</label><div id="activityList" style="max-height:200px;overflow:auto;"></div></div>
+                <div class="form-group"><label>Couleur texte</label><input type="color" id="textColor" value="#000000"><div class="color-preview" id="textColorPalette"></div></div>
+                <div class="form-group"><label>Taille texte</label><div class="slider-container"><input type="range" id="textSize" min="12" max="48" step="1"><span class="slider-value" id="textSizeValue">20px</span></div></div>
+            </div>
+            <div>
+                <div class="form-group"><label>Tag spécial</label><select id="specialType"><option value="none">Aucun</option><option value="roulette">🎲 Roulette</option><option value="special">🌟 Soirée spéciale</option><option value="decouverte">🔍 Découverte</option><option value="chill">😎 Chill</option><option value="maitrise">🏆 Maîtrise</option><option value="custom">✏️ Personnalisé</option></select></div>
+                <div class="form-group" id="specialNameGroup" style="display:none;"><label>Nom du tag</label><input type="text" id="specialName"></div>
+                <div class="form-group"><label>Règles</label><textarea id="specialRules" rows="3"></textarea></div>
+                <div class="form-group"><label>Couleur tag</label><input type="color" id="tagColor" value="#ffaa44"><div class="color-preview" id="tagColorPalette"></div></div>
+                <div class="form-group"><label>Taille tag</label><div class="slider-container"><input type="range" id="tagSize" min="10" max="36" step="1"><span class="slider-value" id="tagSizeValue">14px</span></div></div>
+            </div>
+        </div>
+        <div class="modal-footer"><button id="cancelModalBtn">Annuler</button><button id="saveModalBtn" class="btn-primary">Enregistrer</button></div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    // ==================== DONNÉES ACTIVITÉS (raids, donjons) ====================
+    const RAID_DATA = ["Désert Perpétuel","Serment du Disciple","Origine des Cauchemars","Jardin du Salut","Dernier Vœu","Crypte de la Pierre","Chute de Cropta","Chute du Roi","Caveau de Verre","Orée du salut"];
+    const DONJON_DATA = ["Équilibre","Ruine de la Guerrière","Fantôme des Profondeurs","Flèche de la Vigie","Trône Brisé","Hôte Vesper","Dualité","Fosse de l'Hérésie","Étreinte de l'Avarice","Prophétie"];
+    const RULE_COLORS = {roulette:'#fbbf24', special:'#ef4444', decouverte:'#10b981', chill:'#8b5cf6', maitrise:'#6b7280'};
+    const DEFAULT_RULES = {roulette:"🎲 3 tirages aléatoires.", special:"🌟 Session experts.", decouverte:"🔍 Ouvert à tous.", chill:"😎 Ambiance détente."};
+    const COLORS = ['#000000','#ef4444','#fbbf24','#10b981','#8b5cf6','#ffaa44'];
+    let planningData = {};
+    let currentEditSlot = null;
+    const days = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+    const timeSlots = ['15h','21h'];
+
+    // Dates
+    function formatDateFrench(date) {
+        const mois = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+        return { jour: date.getDate(), mois: mois[date.getMonth()], annee: date.getFullYear() };
+    }
+    function updateDateAdminTitle() {
+        const start = new Date(document.getElementById('startDateInput').value);
+        const end = new Date(document.getElementById('endDateInput').value);
+        const admin = document.getElementById('adminSelect').value;
+        const s = formatDateFrench(start), e = formatDateFrench(end);
+        let title = s.mois === e.mois ? `📅 Planning du ${s.jour} au ${e.jour} ${s.mois} ${s.annee} • ${admin}` : `📅 Planning du ${s.jour} ${s.mois} au ${e.jour} ${e.mois} ${e.annee} • ${admin}`;
+        document.getElementById('dateAdminTitle').textContent = title;
+    }
+    function initDates() {
+        const today = new Date();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - today.getDay() + (today.getDay()===0?-6:1));
+        const saturday = new Date(monday); saturday.setDate(monday.getDate()+5);
+        document.getElementById('startDateInput').value = monday.toISOString().split('T')[0];
+        document.getElementById('endDateInput').value = saturday.toISOString().split('T')[0];
+        updateDateAdminTitle();
+    }
+
+    // Grille
+    function generateGrid() {
+        const daysHeader = document.getElementById('daysHeader');
+        daysHeader.innerHTML = '<div class="day-cell"></div>';
+        days.forEach(d => daysHeader.innerHTML += `<div class="day-cell">${d}</div>`);
+        const gridDiv = document.getElementById('planningGrid');
+        gridDiv.innerHTML = '';
+        timeSlots.forEach(slot => {
+            const row = document.createElement('div'); row.className = 'time-slot-row';
+            row.innerHTML = `<div class="time-label">${slot}</div>`;
+            days.forEach((_,idx) => {
+                const card = document.createElement('div'); card.className = 'activity-card empty';
+                card.setAttribute('data-day', idx); card.setAttribute('data-slot', slot);
+                card.innerHTML = `<div class="activity-name">Vide</div><div class="gear-icon">⚙️</div>`;
+                row.appendChild(card);
+            });
+            gridDiv.appendChild(row);
+        });
+        loadDataToGrid();
+    }
+    function loadDataToGrid() {
+        document.querySelectorAll('.activity-card').forEach(card => {
+            const key = `${card.dataset.day}-${card.dataset.slot}`;
+            const data = planningData[key];
+            const nameDiv = card.querySelector('.activity-name');
+            if(data) {
+                card.classList.remove('empty');
+                nameDiv.textContent = data.activityName;
+                nameDiv.style.color = data.textColor;
+                nameDiv.style.fontSize = data.textSize+'px';
+                card.style.borderColor = data.tagColor || '#ccc';
+                let tag = card.querySelector('.activity-tag');
+                if(data.tagName && data.specialType !== 'none') {
+                    if(!tag) { tag = document.createElement('div'); tag.className = 'activity-tag'; card.appendChild(tag); }
+                    tag.textContent = data.tagName;
+                    tag.style.color = data.tagColor;
+                    tag.style.fontSize = data.tagSize+'px';
+                } else if(tag) tag.remove();
+            } else {
+                card.classList.add('empty');
+                nameDiv.textContent = 'Vide';
+                nameDiv.style.color = '#aaa';
+                nameDiv.style.fontSize = '16px';
+                card.style.borderColor = '#ddd';
+                const oldTag = card.querySelector('.activity-tag'); if(oldTag) oldTag.remove();
+            }
+        });
+        updateRulesDisplay();
+    }
+    function updateRulesDisplay() {
+        const rulesMap = new Map();
+        Object.values(planningData).forEach(d => {
+            if(d.specialType && d.specialType !== 'none' && d.specialType !== 'maitrise' && !rulesMap.has(d.specialType)) {
+                rulesMap.set(d.specialType, { name: d.tagName, rules: d.specialRules || DEFAULT_RULES[d.specialType] || '', color: RULE_COLORS[d.specialType] || '#ffaa44' });
+            }
+        });
+        const rulesSection = document.getElementById('rulesSection');
+        const rulesList = document.getElementById('rulesList');
+        if(rulesMap.size===0) { rulesSection.style.display = 'none'; return; }
+        rulesSection.style.display = 'block';
+        rulesList.innerHTML = '';
+        for(let [_,rule] of rulesMap) {
+            rulesList.innerHTML += `<div class="rule-item" style="border-left-color:${rule.color}"><strong style="color:${rule.color}">${rule.name}</strong><br>${rule.rules}</div>`;
+        }
+    }
+    function saveToLocalStorage() { localStorage.setItem('planning_modular', JSON.stringify(planningData)); }
+    function loadFromLocalStorage() { const s = localStorage.getItem('planning_modular'); if(s) { planningData = JSON.parse(s); loadDataToGrid(); } }
+
+    // Modale édition
+    function openModal(card) {
+        currentEditSlot = card;
+        const key = `${card.dataset.day}-${card.dataset.slot}`;
+        const data = planningData[key] || {};
+        document.getElementById('activityType').value = data.activityType || 'raid';
+        document.getElementById('textColor').value = data.textColor || '#000000';
+        document.getElementById('textSize').value = data.textSize || 20;
+        document.getElementById('textSizeValue').textContent = (data.textSize||20)+'px';
+        document.getElementById('specialType').value = data.specialType || 'none';
+        document.getElementById('specialRules').value = data.specialRules || '';
+        document.getElementById('tagColor').value = data.tagColor || RULE_COLORS[data.specialType] || '#ffaa44';
+        document.getElementById('tagSize').value = data.tagSize || 14;
+        document.getElementById('tagSizeValue').textContent = (data.tagSize||14)+'px';
+        const specialNameGroup = document.getElementById('specialNameGroup');
+        if(data.specialType === 'custom') { specialNameGroup.style.display = 'block'; document.getElementById('specialName').value = data.tagName || ''; }
+        else specialNameGroup.style.display = 'none';
+        updateActivityList(data.activityName || '');
+        document.getElementById('modal').classList.add('active');
+    }
+    function updateActivityList(selectedName) {
+        const type = document.getElementById('activityType').value;
+        const container = document.getElementById('activityList');
+        if(type === 'raid') {
+            container.innerHTML = RAID_DATA.map(act => `<div style="padding:8px;margin:4px 0;background:#f0f0f0;border-radius:6px;cursor:pointer;" onclick="document.getElementById('tempSelectedActivity').value='${act}';">${act}</div>`).join('');
+            container.innerHTML += '<input type="hidden" id="tempSelectedActivity" value="'+(selectedName||'')+'">';
+        } else if(type === 'donjon') {
+            container.innerHTML = DONJON_DATA.map(act => `<div style="padding:8px;margin:4px 0;background:#f0f0f0;border-radius:6px;cursor:pointer;" onclick="document.getElementById('tempSelectedActivity').value='${act}';">${act}</div>`).join('');
+            container.innerHTML += '<input type="hidden" id="tempSelectedActivity" value="'+(selectedName||'')+'">';
+        } else if(type === 'libre') {
+            container.innerHTML = '<div style="padding:12px;text-align:center;">✨ Activité libre</div>';
+        } else if(type === 'custom') {
+            container.innerHTML = '<div style="padding:12px;">✏️ Nom personnalisé :</div><input type="text" id="customActivityName" placeholder="Nom">';
+            if(selectedName && !RAID_DATA.includes(selectedName) && !DONJON_DATA.includes(selectedName)) setTimeout(()=>{ let inp=document.getElementById('customActivityName'); if(inp) inp.value=selectedName; },0);
+        }
+    }
+    function saveModal() {
+        if(!currentEditSlot) return;
+        const key = `${currentEditSlot.dataset.day}-${currentEditSlot.dataset.slot}`;
+        let activityName = '';
+        const type = document.getElementById('activityType').value;
+        if(type === 'libre') activityName = 'Activité libre';
+        else if(type === 'custom') {
+            const custom = document.getElementById('customActivityName');
+            activityName = custom ? custom.value : 'Activité';
+            if(!activityName) activityName = 'Activité';
+        } else {
+            const temp = document.getElementById('tempSelectedActivity');
+            activityName = temp ? temp.value : (type==='raid'?RAID_DATA[0]:DONJON_DATA[0]);
+        }
+        const specialType = document.getElementById('specialType').value;
+        let tagName = '';
+        if(specialType === 'custom') tagName = document.getElementById('specialName').value;
+        else if(specialType !== 'none') {
+            const names = { roulette:'🎲 Roulette', special:'🌟 Soirée spéciale', decouverte:'🔍 Découverte', chill:'😎 Chill', maitrise:'🏆 Maîtrise' };
+            tagName = names[specialType] || '';
+        }
+        planningData[key] = {
+            activityName, activityType: type,
+            textColor: document.getElementById('textColor').value,
+            textSize: parseInt(document.getElementById('textSize').value),
+            specialType, tagName,
+            specialRules: document.getElementById('specialRules').value,
+            tagColor: document.getElementById('tagColor').value,
+            tagSize: parseInt(document.getElementById('tagSize').value)
+        };
+        if(specialType === 'none') delete planningData[key].tagName;
+        saveToLocalStorage();
+        loadDataToGrid();
+        closeModal();
+        showToast('✅ Enregistré');
+    }
+    function closeModal() { document.getElementById('modal').classList.remove('active'); currentEditSlot = null; }
+    function resetAll() { if(confirm('Effacer tout ?')) { planningData = {}; saveToLocalStorage(); loadDataToGrid(); showToast('🗑️ Réinitialisé'); } }
+    function showToast(msg) { const t = document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+    async function exportPNG() {
+        const container = document.getElementById('appContainer');
+        container.classList.add('capture-mode');
+        await new Promise(r=>setTimeout(r,100));
+        try {
+            const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', logging: false });
+            const admin = document.getElementById('adminSelect').value;
+            const link = document.createElement('a');
+            link.download = `planning_${admin}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            showToast('✅ Export terminé');
+        } catch(e) { showToast('❌ Erreur export'); }
+        finally { container.classList.remove('capture-mode'); }
+    }
+    function setupBaseEvents() {
+        document.getElementById('planningGrid').addEventListener('click', e => { const card = e.target.closest('.activity-card'); if(card && !e.target.classList.contains('gear-icon')) openModal(card); });
+        document.getElementById('activityType').addEventListener('change', () => updateActivityList(''));
+        document.getElementById('specialType').addEventListener('change', (e) => {
+            document.getElementById('specialNameGroup').style.display = e.target.value === 'custom' ? 'block' : 'none';
+            if(DEFAULT_RULES[e.target.value]) document.getElementById('specialRules').value = DEFAULT_RULES[e.target.value];
+            if(RULE_COLORS[e.target.value]) document.getElementById('tagColor').value = RULE_COLORS[e.target.value];
+        });
+        document.getElementById('textSize').addEventListener('input', e => document.getElementById('textSizeValue').textContent = e.target.value+'px');
+        document.getElementById('tagSize').addEventListener('input', e => document.getElementById('tagSizeValue').textContent = e.target.value+'px');
+        document.getElementById('saveModalBtn').addEventListener('click', saveModal);
+        document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
+        document.getElementById('closeModal').addEventListener('click', closeModal);
+        document.getElementById('resetBtn').addEventListener('click', resetAll);
+        document.getElementById('exportBtn').addEventListener('click', exportPNG);
+        document.getElementById('adminSelect').addEventListener('change', updateDateAdminTitle);
+        const textPalette = document.getElementById('textColorPalette'), tagPalette = document.getElementById('tagColorPalette');
+        COLORS.forEach(c => {
+            let s1 = document.createElement('div'); s1.className='color-option'; s1.style.background=c; s1.onclick = () => document.getElementById('textColor').value = c; textPalette.appendChild(s1);
+            let s2 = document.createElement('div'); s2.className='color-option'; s2.style.background=c; s2.onclick = () => document.getElementById('tagColor').value = c; tagPalette.appendChild(s2);
+        });
+    }
+
+    // ==================== MODE CONFIGURATION COMPLET (drag & drop + tous réglages) ====================
+    let isConfigMode = false;
+    const toggleBtn = document.getElementById('toggleConfigBtn');
+    const configPanel = document.getElementById('configPanel');
+    const container = document.getElementById('appContainer');
+
+    // Appliquer tous les styles à partir des sliders/color pickers
+    function applyAllStyles() {
+        // Image et couleur de fond
+        let bgImage = document.getElementById('bgImageUrl').value.trim();
+        if(bgImage) document.documentElement.style.setProperty('--bg-image', `url('${bgImage}')`);
+        else document.documentElement.style.setProperty('--bg-image', 'none');
+        document.documentElement.style.setProperty('--bg-color', document.getElementById('bgColor').value);
+        
+        // Logo
+        document.documentElement.style.setProperty('--logo-left', document.getElementById('logoX').value + 'px');
+        document.documentElement.style.setProperty('--logo-top', document.getElementById('logoY').value + 'px');
+        document.documentElement.style.setProperty('--logo-width', document.getElementById('logoSize').value + 'px');
+        document.documentElement.style.setProperty('--logo-visible', document.getElementById('logoVisible').checked ? 'flex' : 'none');
+        document.documentElement.style.setProperty('--logo-bg', document.getElementById('logoBg').value);
+        document.documentElement.style.setProperty('--logo-color', document.getElementById('logoColor').value);
+        
+        // Titre
+        document.documentElement.style.setProperty('--title-left', document.getElementById('titleX').value + 'px');
+        document.documentElement.style.setProperty('--title-top', document.getElementById('titleY').value + 'px');
+        document.documentElement.style.setProperty('--title-visible', document.getElementById('titleVisible').checked ? 'block' : 'none');
+        document.documentElement.style.setProperty('--title-size', document.getElementById('titleSize').value + 'px');
+        document.documentElement.style.setProperty('--title-color', document.getElementById('titleColor').value);
+        
+        // Admin
+        document.documentElement.style.setProperty('--admin-left', document.getElementById('adminX').value + 'px');
+        document.documentElement.style.setProperty('--admin-top', document.getElementById('adminY').value + 'px');
+        document.documentElement.style.setProperty('--admin-visible', document.getElementById('adminVisible').checked ? 'flex' : 'none');
+        document.documentElement.style.setProperty('--admin-bg', document.getElementById('adminBg').value);
+        document.documentElement.style.setProperty('--admin-text', document.getElementById('adminText').value);
+        
+        // Boutons
+        document.documentElement.style.setProperty('--buttons-top', document.getElementById('buttonsY').value + 'px');
+        document.documentElement.style.setProperty('--buttons-visible', document.getElementById('buttonsVisible').checked ? 'flex' : 'none');
+        
+        // Grille
+        document.documentElement.style.setProperty('--grid-left', document.getElementById('gridX').value + 'px');
+        document.documentElement.style.setProperty('--grid-top', document.getElementById('gridY').value + 'px');
+        document.documentElement.style.setProperty('--grid-bg', document.getElementById('gridBg').value);
+        document.documentElement.style.setProperty('--grid-border', document.getElementById('gridBorder').value);
+        document.documentElement.style.setProperty('--grid-text', document.getElementById('gridText').value);
+        
+        // Règles
+        document.documentElement.style.setProperty('--rules-left', document.getElementById('rulesX').value + 'px');
+        document.documentElement.style.setProperty('--rules-top', document.getElementById('rulesY').value + 'px');
+        document.documentElement.style.setProperty('--rules-width', document.getElementById('rulesWidth').value + 'px');
+        document.documentElement.style.setProperty('--rules-visible', document.getElementById('rulesVisible').checked ? 'block' : 'none');
+        document.documentElement.style.setProperty('--rules-bg', document.getElementById('rulesBg').value);
+        document.documentElement.style.setProperty('--rules-border', document.getElementById('rulesBorder').value);
+        document.documentElement.style.setProperty('--rules-text', document.getElementById('rulesText').value);
+        
+        // Appliquer les positions absolues en mode config
+        if(isConfigMode) {
+            document.getElementById('logoArea').style.left = document.getElementById('logoX').value + 'px';
+            document.getElementById('logoArea').style.top = document.getElementById('logoY').value + 'px';
+            document.getElementById('titleInfo').style.left = document.getElementById('titleX').value + 'px';
+            document.getElementById('titleInfo').style.top = document.getElementById('titleY').value + 'px';
+            document.getElementById('adminSelector').style.left = document.getElementById('adminX').value + 'px';
+            document.getElementById('adminSelector').style.top = document.getElementById('adminY').value + 'px';
+            document.getElementById('controlsBlock').style.top = document.getElementById('buttonsY').value + 'px';
+            document.getElementById('planningContainer').style.left = document.getElementById('gridX').value + 'px';
+            document.getElementById('planningContainer').style.top = document.getElementById('gridY').value + 'px';
+            document.getElementById('rulesSection').style.left = document.getElementById('rulesX').value + 'px';
+            document.getElementById('rulesSection').style.top = document.getElementById('rulesY').value + 'px';
+            document.getElementById('rulesSection').style.width = document.getElementById('rulesWidth').value + 'px';
+        }
+        document.getElementById('rulesSection').style.display = document.getElementById('rulesVisible').checked ? 'block' : 'none';
+    }
+
+    // Synchroniser les sliders avec les positions réelles des éléments (après drag ou au démarrage)
+    function syncSlidersFromDOM() {
+        const logoRect = document.getElementById('logoArea').getBoundingClientRect();
+        const titleRect = document.getElementById('titleInfo').getBoundingClientRect();
+        const adminRect = document.getElementById('adminSelector').getBoundingClientRect();
+        const buttonsRect = document.getElementById('controlsBlock').getBoundingClientRect();
+        const gridRect = document.getElementById('planningContainer').getBoundingClientRect();
+        const rulesRect = document.getElementById('rulesSection').getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        document.getElementById('logoX').value = Math.round(logoRect.left - containerRect.left);
+        document.getElementById('logoY').value = Math.round(logoRect.top - containerRect.top);
+        document.getElementById('titleX').value = Math.round(titleRect.left - containerRect.left);
+        document.getElementById('titleY').value = Math.round(titleRect.top - containerRect.top);
+        document.getElementById('adminX').value = Math.round(adminRect.left - containerRect.left);
+        document.getElementById('adminY').value = Math.round(adminRect.top - containerRect.top);
+        document.getElementById('buttonsY').value = Math.round(buttonsRect.top - containerRect.top);
+        document.getElementById('gridX').value = Math.round(gridRect.left - containerRect.left);
+        document.getElementById('gridY').value = Math.round(gridRect.top - containerRect.top);
+        document.getElementById('rulesX').value = Math.round(rulesRect.left - containerRect.left);
+        document.getElementById('rulesY').value = Math.round(rulesRect.top - containerRect.top);
+        document.getElementById('rulesWidth').value = rulesRect.width;
+        // Récupérer les valeurs actuelles des CSS pour initialiser les autres champs
+        document.getElementById('logoSize').value = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--logo-width')) || 70;
+        document.getElementById('titleSize').value = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--title-size')) || 28;
+        document.getElementById('logoVisible').checked = getComputedStyle(document.documentElement).getPropertyValue('--logo-visible').trim() !== 'none';
+        document.getElementById('titleVisible').checked = getComputedStyle(document.documentElement).getPropertyValue('--title-visible').trim() !== 'none';
+        document.getElementById('adminVisible').checked = getComputedStyle(document.documentElement).getPropertyValue('--admin-visible').trim() !== 'none';
+        document.getElementById('buttonsVisible').checked = getComputedStyle(document.documentElement).getPropertyValue('--buttons-visible').trim() !== 'none';
+        document.getElementById('rulesVisible').checked = getComputedStyle(document.documentElement).getPropertyValue('--rules-visible').trim() !== 'none';
+        // Couleurs
+        document.getElementById('bgColor').value = getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim() || '#f0f2f5';
+        document.getElementById('logoBg').value = getComputedStyle(document.documentElement).getPropertyValue('--logo-bg').trim() || '#e0e0e0';
+        document.getElementById('logoColor').value = getComputedStyle(document.documentElement).getPropertyValue('--logo-color').trim() || '#333';
+        document.getElementById('titleColor').value = getComputedStyle(document.documentElement).getPropertyValue('--title-color').trim() || '#1a1a1e';
+        document.getElementById('adminBg').value = getComputedStyle(document.documentElement).getPropertyValue('--admin-bg').trim() || '#f0f0f0';
+        document.getElementById('adminText').value = getComputedStyle(document.documentElement).getPropertyValue('--admin-text').trim() || '#333';
+        document.getElementById('gridBg').value = getComputedStyle(document.documentElement).getPropertyValue('--grid-bg').trim() || 'rgba(255,255,255,0.7)';
+        document.getElementById('gridBorder').value = getComputedStyle(document.documentElement).getPropertyValue('--grid-border').trim() || '#ccc';
+        document.getElementById('gridText').value = getComputedStyle(document.documentElement).getPropertyValue('--grid-text').trim() || '#1a1a1e';
+        document.getElementById('rulesBg').value = getComputedStyle(document.documentElement).getPropertyValue('--rules-bg').trim() || '#fafafa';
+        document.getElementById('rulesBorder').value = getComputedStyle(document.documentElement).getPropertyValue('--rules-border').trim() || '#ddd';
+        document.getElementById('rulesText').value = getComputedStyle(document.documentElement).getPropertyValue('--rules-text').trim() || '#333';
+        applyAllStyles();
+    }
+
+    // Drag & drop pour chaque élément
+    function makeDraggable(elementId, xId, yId) {
+        const el = document.getElementById(elementId);
+        if(!el) return;
+        let isDragging = false, startX, startY, startLeft, startTop;
+        el.addEventListener('mousedown', (e) => {
+            if(!isConfigMode) return;
+            e.preventDefault();
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = el.getBoundingClientRect();
+            const parentRect = container.getBoundingClientRect();
+            startLeft = rect.left - parentRect.left;
+            startTop = rect.top - parentRect.top;
+            el.style.cursor = 'grabbing';
+        });
+        window.addEventListener('mousemove', (e) => {
+            if(!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            let newLeft = startLeft + dx;
+            let newTop = startTop + dy;
+            if(xId) document.getElementById(xId).value = newLeft;
+            if(yId) document.getElementById(yId).value = newTop;
+            applyAllStyles();
+        });
+        window.addEventListener('mouseup', () => { isDragging = false; if(el) el.style.cursor = ''; });
+    }
+
+    function initConfigMode() {
+        makeDraggable('logoArea', 'logoX', 'logoY');
+        makeDraggable('titleInfo', 'titleX', 'titleY');
+        makeDraggable('adminSelector', 'adminX', 'adminY');
+        makeDraggable('controlsBlock', null, 'buttonsY');
+        // Écouter tous les changements de contrôles
+        const allInputs = ['logoX','logoY','logoSize','titleX','titleY','titleSize','adminX','adminY','buttonsY','gridX','gridY','rulesX','rulesY','rulesWidth',
+                           'bgColor','logoBg','logoColor','titleColor','adminBg','adminText','gridBg','gridBorder','gridText','rulesBg','rulesBorder','rulesText'];
+        allInputs.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('input', applyAllStyles);
+        });
+        const checkboxes = ['logoVisible','titleVisible','adminVisible','buttonsVisible','rulesVisible'];
+        checkboxes.forEach(id => {
+            const cb = document.getElementById(id);
+            if(cb) cb.addEventListener('change', applyAllStyles);
+        });
+        document.getElementById('applyBgBtn').addEventListener('click', () => {
+            let url = document.getElementById('bgImageUrl').value.trim();
+            if(url) document.documentElement.style.setProperty('--bg-image', `url('${url}')`);
+            else document.documentElement.style.setProperty('--bg-image', 'none');
+        });
+        applyAllStyles();
+    }
+
+    toggleBtn.addEventListener('click', () => {
+        isConfigMode = !isConfigMode;
+        if(isConfigMode) {
+            container.classList.add('config-mode');
+            configPanel.classList.add('active');
+            syncSlidersFromDOM();
+        } else {
+            container.classList.remove('config-mode');
+            configPanel.classList.remove('active');
+        }
+    });
+    document.getElementById('closeConfigBtn').addEventListener('click', () => {
+        isConfigMode = false;
+        container.classList.remove('config-mode');
+        configPanel.classList.remove('active');
+    });
+    document.getElementById('copyCssBtn').addEventListener('click', () => {
+        const css = `/* Copiez-collez ce bloc dans :root de votre fichier CSS */
+--bg-image: url('${document.getElementById('bgImageUrl').value}');
+--bg-color: ${document.getElementById('bgColor').value};
+--logo-left: ${document.getElementById('logoX').value}px;
+--logo-top: ${document.getElementById('logoY').value}px;
+--logo-visible: ${document.getElementById('logoVisible').checked ? 'flex' : 'none'};
+--logo-width: ${document.getElementById('logoSize').value}px;
+--logo-bg: ${document.getElementById('logoBg').value};
+--logo-color: ${document.getElementById('logoColor').value};
+--title-left: ${document.getElementById('titleX').value}px;
+--title-top: ${document.getElementById('titleY').value}px;
+--title-visible: ${document.getElementById('titleVisible').checked ? 'block' : 'none'};
+--title-size: ${document.getElementById('titleSize').value}px;
+--title-color: ${document.getElementById('titleColor').value};
+--admin-left: ${document.getElementById('adminX').value}px;
+--admin-top: ${document.getElementById('adminY').value}px;
+--admin-visible: ${document.getElementById('adminVisible').checked ? 'flex' : 'none'};
+--admin-bg: ${document.getElementById('adminBg').value};
+--admin-text: ${document.getElementById('adminText').value};
+--buttons-top: ${document.getElementById('buttonsY').value}px;
+--buttons-visible: ${document.getElementById('buttonsVisible').checked ? 'flex' : 'none'};
+--grid-left: ${document.getElementById('gridX').value}px;
+--grid-top: ${document.getElementById('gridY').value}px;
+--grid-bg: ${document.getElementById('gridBg').value};
+--grid-border: ${document.getElementById('gridBorder').value};
+--grid-text: ${document.getElementById('gridText').value};
+--rules-left: ${document.getElementById('rulesX').value}px;
+--rules-top: ${document.getElementById('rulesY').value}px;
+--rules-width: ${document.getElementById('rulesWidth').value}px;
+--rules-visible: ${document.getElementById('rulesVisible').checked ? 'block' : 'none'};
+--rules-bg: ${document.getElementById('rulesBg').value};
+--rules-border: ${document.getElementById('rulesBorder').value};
+--rules-text: ${document.getElementById('rulesText').value};`;
+        document.getElementById('cssOutput').textContent = css;
+        navigator.clipboard.writeText(css).then(() => showToast('CSS copié !'));
+    });
+
+    // Initialisation globale
+    function init() {
+        initDates();
+        generateGrid();
+        loadFromLocalStorage();
+        setupBaseEvents();
+        initConfigMode();
+        setTimeout(() => syncSlidersFromDOM(), 100);
+    }
+    init();
+</script>
+</body>
+</html>
