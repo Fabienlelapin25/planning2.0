@@ -196,6 +196,20 @@
             background: #000;
             color: #fff;
         }
+
+        .slot-row select optgroup {
+            background: #0b0b0b;
+            color: #9a9a9a;
+            font-family: 'Cinzel', serif;
+            font-weight: 700;
+        }
+
+        .slot-row select optgroup option {
+            background: #000;
+            color: #fff;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 600;
+        }
         .slot-row input[type="time"] {
             flex: 0.5;
             min-width: 60px;
@@ -301,7 +315,7 @@
         }
 
         .planning-card {
-            width: 920px;
+            width: 820px;
             height: auto;
             min-height: 640px;
             background-color: #000;
@@ -328,7 +342,7 @@
         }
 
         .planning-card .header h1 {
-            font-size: 2.2rem;
+            font-size: 2.55rem;
             font-weight: 900;
             color: #fff;
             letter-spacing: 5px;
@@ -344,7 +358,7 @@
         }
 
         .planning-card .header p {
-            font-size: .78rem;
+            font-size: .92rem;
             color: #777;
             letter-spacing: 3px;
             text-transform: uppercase;
@@ -370,7 +384,7 @@
             border-left: 4px solid #2a2a2a;
             display: grid;
             grid-template-columns: 78px 1fr 1fr;
-            min-height: 78px;
+            min-height: 88px;
             align-items: stretch;
         }
 
@@ -387,7 +401,7 @@
 
         .day-row .day-abbr {
             font-weight: 700;
-            font-size: 1.05rem;
+            font-size: 1.28rem;
             color: #d7d7d7;
             display: flex;
             align-items: center;
@@ -420,6 +434,18 @@
             border-right: 0;
         }
 
+        .slot-line.slot-off {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-family: 'Cinzel', serif;
+            font-size: .90rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
         .slot-line .slot-time {
             grid-column: 1;
             grid-row: 1;
@@ -428,7 +454,7 @@
             padding: 4px 8px;
             color: #cfcfcf;
             font-weight: 700;
-            font-size: .76rem;
+            font-size: .90rem;
             white-space: nowrap;
             text-align: center;
             letter-spacing: .4px;
@@ -444,7 +470,7 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-size: 1.04rem;
+            font-size: 1.24rem;
             font-style: italic;
             align-self: center;
         }
@@ -453,7 +479,7 @@
             grid-column: 2;
             grid-row: 2;
             justify-self: start;
-            font-size: .72rem;
+            font-size: .84rem;
             padding: 3px 8px;
             border: 1px solid #444;
             color: #fff;
@@ -475,7 +501,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: .82rem;
+            font-size: .94rem;
             color: #444;
             letter-spacing: 4px;
             text-transform: uppercase;
@@ -511,7 +537,7 @@
             background: #fff;
             color: #000;
             border: 1px solid #fff;
-            font-size: .82rem;
+            font-size: .94rem;
         }
 
         .actions .btn:hover {
@@ -521,7 +547,7 @@
 
         @media (max-width: 1050px) {
             .planning-card {
-                width: min(96vw, 920px);
+                width: min(96vw, 820px);
             }
         }
 
@@ -692,7 +718,7 @@
                 "Panthéon Insurrection Prime": "#a5d6a7"
             };
 
-            const ALL_ACTIVITIES = [...RAID_DATA, ...DONJON_DATA, "Autre"];
+            const ALL_ACTIVITIES = [...RAID_DATA, ...DONJON_DATA, "Personnaliser"];
 
             // ---------- ÉTAT ----------
             let weekData = DAYS.map((name, idx) => ({
@@ -700,8 +726,8 @@
                 name: name,
                 abbr: ABBR[idx],
                 slots: [
-                    { active: false, activity: '', start: '08:00', tag: 'none', customTag: '' },
-                    { active: false, activity: '', start: '18:00', tag: 'none', customTag: '' }
+                    { active: false, activity: '', start: '08:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' },
+                    { active: false, activity: '', start: '18:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' }
                 ]
             }));
 
@@ -732,8 +758,37 @@
                                         </label>
                                         <select class="activity-select">
                                             <option value="">Choisir...</option>
-                                            ${ALL_ACTIVITIES.map(a => `<option value="${a}" ${a === slot.activity ? 'selected' : ''}>${a}</option>`).join('')}
+
+                                            <optgroup label="──────── RAIDS ────────">
+                                                ${RAID_DATA.map(a => `<option value="${a}" ${a === slot.activity ? 'selected' : ''}>${a}</option>`).join('')}
+                                            </optgroup>
+
+                                            <optgroup label="─────── DONJONS ───────">
+                                                ${DONJON_DATA.map(a => `<option value="${a}" ${a === slot.activity ? 'selected' : ''}>${a}</option>`).join('')}
+                                            </optgroup>
+
+                                            <optgroup label="──── PERSONNALISÉ ────">
+                                                <option value="Personnaliser" ${slot.activity === 'Personnaliser' ? 'selected' : ''}>✎ Personnaliser</option>
+                                            </optgroup>
                                         </select>
+
+                                        <input
+                                            type="text"
+                                            class="custom-activity-input"
+                                            value="${slot.customActivity || ''}"
+                                            placeholder="Nom de l'activité..."
+                                            maxlength="40"
+                                            style="${slot.activity === 'Personnaliser' ? '' : 'display:none;'} flex:1 1 58%; min-width:160px; background:#000; border:1px solid #444; color:#fff; padding:6px 9px; font-family:'Cormorant Garamond',serif; font-size:1rem;"
+                                        />
+
+                                        <input
+                                            type="color"
+                                            class="custom-color-input"
+                                            value="${slot.customColor || RAID_COLORS[slot.activity] || '#ffffff'}"
+                                            title="Couleur de l'activité"
+                                            style="width:42px; min-width:42px; height:36px; padding:2px; background:#000; border:1px solid #444; cursor:pointer;"
+                                        />
+
                                         <input type="time" class="start-input" value="${slot.start}" />
                                         <select class="tag-select">
                                             <option value="none" ${slot.tag === 'none' ? 'selected' : ''}>Aucun</option>
@@ -765,6 +820,8 @@
                     const slotIdx = parseInt(row.dataset.slot);
                     const toggle = row.querySelector('.slot-toggle');
                     const activitySelect = row.querySelector('.activity-select');
+                    const customActivityInput = row.querySelector('.custom-activity-input');
+                    const customColorInput = row.querySelector('.custom-color-input');
                     const startInput = row.querySelector('.start-input');
                     const tagSelect = row.querySelector('.tag-select');
                     const customTagInput = row.querySelector('.custom-tag-input');
@@ -773,6 +830,12 @@
                         const slot = weekData[dayIdx].slots[slotIdx];
                         slot.active = toggle.checked;
                         slot.activity = activitySelect.value;
+                        slot.customActivity = customActivityInput ? customActivityInput.value.trim() : '';
+                        slot.customColor = customColorInput ? customColorInput.value : '#ffffff';
+
+                        const isCustomActivity = slot.activity === 'Personnaliser';
+                        if (customActivityInput) customActivityInput.style.display = isCustomActivity ? '' : 'none';
+
                         slot.start = startInput.value;
                         slot.tag = tagSelect.value;
                         slot.customTag = customTagInput ? customTagInput.value.trim() : '';
@@ -785,7 +848,14 @@
                     };
 
                     toggle.addEventListener('change', updateSlot);
-                    activitySelect.addEventListener('change', updateSlot);
+                    activitySelect.addEventListener('change', () => {
+                        if (customColorInput) {
+                            customColorInput.value = RAID_COLORS[activitySelect.value] || '#ffffff';
+                        }
+                        updateSlot();
+                    });
+                    if (customActivityInput) customActivityInput.addEventListener('input', updateSlot);
+                    if (customColorInput) customColorInput.addEventListener('input', updateSlot);
                     startInput.addEventListener('input', updateSlot);
                     tagSelect.addEventListener('change', updateSlot);
                     if (customTagInput) customTagInput.addEventListener('input', updateSlot);
@@ -812,12 +882,17 @@
                     let slotBlocks = '';
                     day.slots.forEach((slot) => {
                         if (!slot.active) {
-                            slotBlocks += `<div class="slot-line" style="opacity:.12;"></div>`;
+                            slotBlocks += `<div class="slot-line slot-off">— OFF —</div>`;
                             return;
                         }
 
-                        const activity = slot.activity || '◈ Activité';
-                        const color = RAID_COLORS[activity] || '#ffffff';
+                        const isCustomActivity = slot.activity === 'Personnaliser';
+                        const activity = isCustomActivity
+                            ? (slot.customActivity || 'Activité personnalisée')
+                            : (slot.activity || '◈ Activité');
+                        const color = slot.customColor
+                            || RAID_COLORS[activity]
+                            || '#ffffff';
                         const tagClass = slot.tag !== 'none' ? (TAG_CLASSES[slot.tag] || '') : '';
                         const tagLabel = slot.tag === 'custom'
                             ? (slot.customTag || 'Personnalisé')
@@ -859,16 +934,16 @@
                             { active: true, activity: 'Chute du roi', start: '18:00', tag: 'roulette', customTag: '' }
                         ] },
                     { id: 1, name: 'Mardi', abbr: 'MAR', slots: [
-                            { active: false, activity: '', start: '08:00', tag: 'none', customTag: '' },
+                            { active: false, activity: '', start: '08:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' },
                             { active: true, activity: 'Dualité', start: '19:00', tag: 'chill', customTag: '' }
                         ] },
                     { id: 2, name: 'Mercredi', abbr: 'MER', slots: [
                             { active: true, activity: 'Serment du disciple', start: '09:00', tag: 'decouverte', customTag: '' },
-                            { active: false, activity: '', start: '18:00', tag: 'none', customTag: '' }
+                            { active: false, activity: '', start: '18:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' }
                         ] },
                     { id: 3, name: 'Jeudi', abbr: 'JEU', slots: [
-                            { active: false, activity: '', start: '08:00', tag: 'none', customTag: '' },
-                            { active: false, activity: '', start: '18:00', tag: 'none', customTag: '' }
+                            { active: false, activity: '', start: '08:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' },
+                            { active: false, activity: '', start: '18:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' }
                         ] },
                     { id: 4, name: 'Vendredi', abbr: 'VEN', slots: [
                             { active: true, activity: 'Origines des cauchemars', start: '10:00', tag: 'maitrise', customTag: '' },
@@ -880,7 +955,7 @@
                         ] },
                     { id: 6, name: 'Dimanche', abbr: 'DIM', slots: [
                             { active: true, activity: 'Crypte de la pierre', start: '11:00', tag: 'chill', customTag: '' },
-                            { active: false, activity: '', start: '18:00', tag: 'none', customTag: '' }
+                            { active: false, activity: '', start: '18:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' }
                         ] }
                 ];
                 updateAll();
@@ -893,18 +968,25 @@
 
                 weekData.forEach(day => {
                     day.slots.forEach(slot => {
+                        // Toujours vider l'ancien tag personnalisé avant de randomiser.
+                        // Ainsi, aucune ancienne valeur customTag ne peut rester en mémoire.
+                        slot.customTag = '';
+
                         // Environ 70 % de chance qu'un créneau soit actif.
                         slot.active = Math.random() < 0.70;
 
                         if (slot.active) {
-                            slot.activity = ALL_ACTIVITIES[Math.floor(Math.random() * ALL_ACTIVITIES.length)];
+                            const randomActivities = ALL_ACTIVITIES.filter(a => a !== 'Personnaliser');
+                            slot.activity = randomActivities[Math.floor(Math.random() * randomActivities.length)];
+                            slot.customActivity = '';
+                            slot.customColor = RAID_COLORS[slot.activity] || '#ffffff';
                             slot.start = times[Math.floor(Math.random() * times.length)];
                             slot.tag = tags[Math.floor(Math.random() * tags.length)];
-                            slot.customTag = '';
                         } else {
                             slot.activity = '';
+                            slot.customActivity = '';
+                            slot.customColor = '#ffffff';
                             slot.tag = 'none';
-                            slot.customTag = '';
                         }
                     });
                 });
@@ -917,6 +999,8 @@
                 weekData.forEach(day => {
                     day.slots.forEach(slot => { slot.active = false;
                         slot.activity = '';
+                        slot.customActivity = '';
+                        slot.customColor = '#ffffff';
                         slot.tag = 'none';
                         slot.customTag = ''; });
                 });
