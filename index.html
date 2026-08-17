@@ -606,6 +606,112 @@
             }
         }
 
+        /* ---------- GOLEM-WEEK / IMPORT BOT ---------- */
+        .week-import-panel {
+            border: 1px solid #333;
+            border-left: 3px solid #fff;
+            background: #080808;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .week-import-panel .week-title {
+            font-family: 'Cinzel', serif;
+            font-size: .72rem;
+            color: #ddd;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .week-import-row {
+            display: grid;
+            grid-template-columns: auto 1fr auto auto;
+            gap: 7px;
+            align-items: center;
+        }
+
+        .week-import-row label {
+            font-family: 'Cormorant Garamond', serif;
+            color: #777;
+            font-size: .9rem;
+        }
+
+        .week-import-row input[type="date"] {
+            background: #000;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 7px 9px;
+            font-family: 'Cinzel', serif;
+            min-width: 0;
+        }
+
+        .week-nav-btn {
+            height: 34px;
+            min-width: 36px;
+            padding: 0 10px;
+            border: 1px solid #444;
+            background: #000;
+            color: #bbb;
+            font-family: 'Cinzel', serif;
+            cursor: pointer;
+        }
+
+        .week-nav-btn:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+
+        .week-import-hint {
+            margin-top: 7px;
+            color: #4c4c4c;
+            font-size: .56rem;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .btn-code {
+            border-color: #fff;
+            background: #fff;
+            color: #000;
+        }
+
+        .btn-code:hover {
+            background: #000;
+            color: #fff;
+        }
+
+        .code-status {
+            display: none;
+            margin-top: 9px;
+            padding: 8px 10px;
+            border: 1px solid #2f2f2f;
+            background: #050505;
+            color: #aaa;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: .8rem;
+            line-height: 1.35;
+        }
+
+        .code-status.visible {
+            display: block;
+        }
+
+        .code-status strong {
+            color: #fff;
+        }
+
+        @media (max-width: 600px) {
+            .week-import-row {
+                grid-template-columns: auto 1fr auto;
+            }
+
+            .week-import-row label {
+                grid-column: 1 / 4;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -616,6 +722,18 @@
                 ❦ MENU
                 <small>7 jours · 2 créneaux</small>
             </h2>
+
+            <div class="week-import-panel">
+                <div class="week-title">◈ Semaine du planning</div>
+                <div class="week-import-row">
+                    <button class="week-nav-btn" id="prevWeekBtn" title="Semaine précédente">‹</button>
+                    <input type="date" id="weekStartInput" />
+                    <button class="week-nav-btn" id="nextWeekBtn" title="Semaine suivante">›</button>
+                    <button class="week-nav-btn" id="currentWeekBtn" title="Semaine actuelle">Auj.</button>
+                </div>
+                <div class="week-import-hint" id="weekRangeLabel">Lundi → Dimanche</div>
+            </div>
+
             <div class="day-controls" id="dayControls">
                 <!-- Généré par JS -->
             </div>
@@ -646,7 +764,9 @@
             </div>
             <div class="actions">
                 <button class="btn btn-success" id="exportPngBtn">⬇ Exporter PNG</button>
+                <button class="btn btn-code" id="copyGolemCodeBtn">◈ Copier code GOLEM</button>
             </div>
+            <div class="code-status" id="codeStatus"></div>
         </div>
     </div>
 
@@ -737,6 +857,266 @@
             const exportBtn = document.getElementById('exportPngBtn');
             const randomBtn = document.getElementById('randomBtn');
             const clearAllBtn = document.getElementById('clearAllBtn');
+
+            const weekStartInput = document.getElementById('weekStartInput');
+            const weekRangeLabel = document.getElementById('weekRangeLabel');
+            const prevWeekBtn = document.getElementById('prevWeekBtn');
+            const nextWeekBtn = document.getElementById('nextWeekBtn');
+            const currentWeekBtn = document.getElementById('currentWeekBtn');
+            const copyGolemCodeBtn = document.getElementById('copyGolemCodeBtn');
+            const codeStatus = document.getElementById('codeStatus');
+
+
+            // ---------- SEMAINE RÉELLE ----------
+            function dateAtLocalMidnight(year, monthIndex, day) {
+                return new Date(year, monthIndex, day, 0, 0, 0, 0);
+            }
+
+            function parseLocalDate(value) {
+                const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+                if (!match) return null;
+
+                return dateAtLocalMidnight(
+                    Number(match[1]),
+                    Number(match[2]) - 1,
+                    Number(match[3])
+                );
+            }
+
+            function formatLocalDateInput(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            function mondayOfWeek(date) {
+                const copy = new Date(date.getTime());
+                copy.setHours(0, 0, 0, 0);
+
+                const jsDay = copy.getDay();
+                const offset = jsDay === 0 ? -6 : 1 - jsDay;
+
+                copy.setDate(copy.getDate() + offset);
+                return copy;
+            }
+
+            function setWeekFromDate(date) {
+                const monday = mondayOfWeek(date);
+                weekStartInput.value = formatLocalDateInput(monday);
+                updateWeekRangeLabel();
+            }
+
+            function shiftWeek(days) {
+                const base = parseLocalDate(weekStartInput.value) || mondayOfWeek(new Date());
+                base.setDate(base.getDate() + days);
+                setWeekFromDate(base);
+            }
+
+            function updateWeekRangeLabel() {
+                const monday = parseLocalDate(weekStartInput.value);
+
+                if (!monday) {
+                    weekRangeLabel.textContent = 'Choisir le lundi de la semaine';
+                    return;
+                }
+
+                const sunday = new Date(monday.getTime());
+                sunday.setDate(sunday.getDate() + 6);
+
+                const fmt = new Intl.DateTimeFormat('fr-FR', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                });
+
+                weekRangeLabel.textContent =
+                    `Du ${fmt.format(monday)} au ${fmt.format(sunday)}`;
+            }
+
+            // ---------- GÉNÉRATION DU CODE GOLEM-WEEK ----------
+            function activityTypeFor(name) {
+                if (RAID_DATA.includes(name)) return 'Raid';
+                if (DONJON_DATA.includes(name)) return 'Donjon';
+                return 'Autre';
+            }
+
+            function activityNameFor(slot) {
+                if (slot.activity === 'Personnaliser') {
+                    return (slot.customActivity || '').trim();
+                }
+
+                return (slot.activity || '').trim();
+            }
+
+            function tagLabelFor(slot) {
+                if (slot.tag === 'custom') {
+                    return (slot.customTag || '').trim();
+                }
+
+                if (slot.tag && slot.tag !== 'none') {
+                    return TAG_NAMES[slot.tag] || '';
+                }
+
+                return '';
+            }
+
+            function slotDateTime(dayIndex, timeValue) {
+                const monday = parseLocalDate(weekStartInput.value);
+
+                if (!monday) {
+                    throw new Error('Choisis d’abord la semaine du planning.');
+                }
+
+                const [hours, minutes] = String(timeValue || '00:00')
+                    .split(':')
+                    .map(Number);
+
+                const date = new Date(monday.getTime());
+                date.setDate(date.getDate() + dayIndex);
+                date.setHours(hours || 0, minutes || 0, 0, 0);
+
+                return date.toISOString();
+            }
+
+            function buildGolemWeekPayload() {
+                const monday = parseLocalDate(weekStartInput.value);
+
+                if (!monday) {
+                    throw new Error('La date de semaine est invalide.');
+                }
+
+                const activities = [];
+
+                weekData.forEach((day, dayIndex) => {
+                    day.slots.forEach((slot, slotIndex) => {
+                        if (!slot.active) return;
+
+                        const name = activityNameFor(slot);
+
+                        if (!name) {
+                            throw new Error(
+                                `${day.name} — ${SLOT_LABELS[slotIndex]} : aucune activité choisie.`
+                            );
+                        }
+
+                        const activityType = activityTypeFor(name);
+                        const scheduledAt = slotDateTime(dayIndex, slot.start);
+
+                        activities.push({
+                            name,
+                            activity_type: activityType,
+                            scheduled_at: scheduledAt,
+
+                            // Le Control Panel pourra ensuite choisir librement
+                            // l'heure de publication. L'importeur actuel utilise
+                            // scheduled_at comme valeur de sécurité si publish_at
+                            // n'est pas renseigné.
+                            publish_at: null,
+
+                            tag: tagLabelFor(slot),
+                            color:
+                                slot.customColor ||
+                                RAID_COLORS[name] ||
+                                '#ffffff',
+
+                            max_players:
+                                activityType === 'Donjon'
+                                    ? 3
+                                    : 6,
+
+                            counts_for_clan: true,
+
+                            description:
+                                slot.tag && slot.tag !== 'none'
+                                    ? tagLabelFor(slot)
+                                    : ''
+                        });
+                    });
+                });
+
+                if (!activities.length) {
+                    throw new Error('Aucune activité active dans le planning.');
+                }
+
+                return {
+                    format: 'GOLEM-WEEK',
+                    version: 1,
+                    week_start: formatLocalDateInput(monday),
+                    generated_at: new Date().toISOString(),
+                    activities
+                };
+            }
+
+            function encodeBase64UrlUtf8(value) {
+                const bytes = new TextEncoder().encode(value);
+                let binary = '';
+
+                for (const byte of bytes) {
+                    binary += String.fromCharCode(byte);
+                }
+
+                return btoa(binary)
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=+$/g, '');
+            }
+
+            function generateGolemWeekCode() {
+                const payload = buildGolemWeekPayload();
+                const encoded = encodeBase64UrlUtf8(JSON.stringify(payload));
+                return {
+                    code: `GOLEM-WEEK:${encoded}`,
+                    count: payload.activities.length,
+                    payload
+                };
+            }
+
+            async function copyTextReliable(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                }
+
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                textarea.style.pointerEvents = 'none';
+
+                document.body.appendChild(textarea);
+                textarea.select();
+
+                const ok = document.execCommand('copy');
+                textarea.remove();
+
+                if (!ok) {
+                    throw new Error('Copie automatique refusée par le navigateur.');
+                }
+            }
+
+            async function copyGolemWeekCode() {
+                try {
+                    const result = generateGolemWeekCode();
+
+                    await copyTextReliable(result.code);
+
+                    codeStatus.innerHTML =
+                        `<strong>✓ CODE GOLEM COPIÉ</strong><br>` +
+                        `${result.count} activité(s) prête(s) à être importée(s) dans le Control Panel.`;
+
+                    codeStatus.classList.add('visible');
+
+                    setTimeout(() => {
+                        codeStatus.classList.remove('visible');
+                    }, 6500);
+                } catch (error) {
+                    codeStatus.innerHTML =
+                        `<strong>ERREUR</strong><br>${error.message}`;
+                    codeStatus.classList.add('visible');
+                }
+            }
 
             // ---------- RENDU DU MENU ----------
             function renderMenu() {
@@ -1031,7 +1411,19 @@
             randomBtn.addEventListener('click', randomizePlanning);
             clearAllBtn.addEventListener('click', clearAll);
 
+            copyGolemCodeBtn.addEventListener('click', copyGolemWeekCode);
+
+            prevWeekBtn.addEventListener('click', () => shiftWeek(-7));
+            nextWeekBtn.addEventListener('click', () => shiftWeek(7));
+            currentWeekBtn.addEventListener('click', () => setWeekFromDate(new Date()));
+
+            weekStartInput.addEventListener('change', () => {
+                const selected = parseLocalDate(weekStartInput.value);
+                if (selected) setWeekFromDate(selected);
+            });
+
             // ---------- INIT ----------
+            setWeekFromDate(new Date());
             updateAll();
         })();
     </script>
