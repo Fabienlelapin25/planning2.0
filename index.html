@@ -490,6 +490,7 @@
             font-weight: 700;
         }
 
+        .slot-line .slot-tag.tag-normal { border-color: #777; color: #ddd; }
         .slot-line .slot-tag.tag-roulette { border-color: #fbbf24; color: #fbbf24; }
         .slot-line .slot-tag.tag-special { border-color: #ef4444; color: #ef4444; }
         .slot-line .slot-tag.tag-decouverte { border-color: #10b981; color: #10b981; }
@@ -806,20 +807,14 @@
             ];
 
             const TAG_NAMES = {
+                normal: '◈ Normal',
                 roulette: '🎲 Roulette',
-                special: '🌟 Spéciale',
-                decouverte: '🔍 Découverte',
-                chill: '😎 Chill',
-                maitrise: '🏆 Maîtrise',
                 custom: '✎ Personnalisé'
             };
 
             const TAG_CLASSES = {
+                normal: 'tag-normal',
                 roulette: 'tag-roulette',
-                special: 'tag-special',
-                decouverte: 'tag-decouverte',
-                chill: 'tag-chill',
-                maitrise: 'tag-maitrise',
                 custom: 'tag-custom'
             };
 
@@ -846,8 +841,8 @@
                 name: name,
                 abbr: ABBR[idx],
                 slots: [
-                    { active: false, activity: '', start: '08:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' },
-                    { active: false, activity: '', start: '18:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' }
+                    { active: false, activity: '', start: '08:00', tag: 'normal', customTag: '', customActivity: '', customColor: '#ffffff' },
+                    { active: false, activity: '', start: '18:00', tag: 'normal', customTag: '', customActivity: '', customColor: '#ffffff' }
                 ]
             }));
 
@@ -954,11 +949,7 @@
                     return (slot.customTag || '').trim();
                 }
 
-                if (slot.tag && slot.tag !== 'none') {
-                    return TAG_NAMES[slot.tag] || '';
-                }
-
-                return '';
+                return TAG_NAMES[slot.tag] || TAG_NAMES.normal;
             }
 
             function slotDateTime(dayIndex, timeValue) {
@@ -1000,6 +991,12 @@
                             );
                         }
 
+                        if (slot.tag === 'custom' && !String(slot.customTag || '').trim()) {
+                            throw new Error(
+                                `${day.name} — ${SLOT_LABELS[slotIndex]} : donne un nom au tag personnalisé.`
+                            );
+                        }
+
                         const activityType = activityTypeFor(name);
                         const scheduledAt = slotDateTime(dayIndex, slot.start);
 
@@ -1014,7 +1011,11 @@
                             // n'est pas renseigné.
                             publish_at: null,
 
-                            tag: tagLabelFor(slot),
+                            tag: slot.tag || 'normal',
+                            custom_tag:
+                                slot.tag === 'custom'
+                                    ? tagLabelFor(slot)
+                                    : '',
                             color:
                                 slot.customColor ||
                                 RAID_COLORS[name] ||
@@ -1026,11 +1027,7 @@
                                     : 6,
 
                             counts_for_clan: true,
-
-                            description:
-                                slot.tag && slot.tag !== 'none'
-                                    ? tagLabelFor(slot)
-                                    : ''
+                            description: ''
                         });
                     });
                 });
@@ -1041,7 +1038,7 @@
 
                 return {
                     format: 'GOLEM-WEEK',
-                    version: 1,
+                    version: 2,
                     week_start: formatLocalDateInput(monday),
                     generated_at: new Date().toISOString(),
                     activities
@@ -1171,12 +1168,8 @@
 
                                         <input type="time" class="start-input" value="${slot.start}" />
                                         <select class="tag-select">
-                                            <option value="none" ${slot.tag === 'none' ? 'selected' : ''}>Aucun</option>
+                                            <option value="normal" ${slot.tag === 'normal' ? 'selected' : ''}>◈ Normal</option>
                                             <option value="roulette" ${slot.tag === 'roulette' ? 'selected' : ''}>🎲 Roulette</option>
-                                            <option value="special" ${slot.tag === 'special' ? 'selected' : ''}>🌟 Spéciale</option>
-                                            <option value="decouverte" ${slot.tag === 'decouverte' ? 'selected' : ''}>🔍 Découverte</option>
-                                            <option value="chill" ${slot.tag === 'chill' ? 'selected' : ''}>😎 Chill</option>
-                                            <option value="maitrise" ${slot.tag === 'maitrise' ? 'selected' : ''}>🏆 Maîtrise</option>
                                             <option value="custom" ${slot.tag === 'custom' ? 'selected' : ''}>✎ Personnalisé</option>
                                         </select>
                                         <input
@@ -1273,10 +1266,10 @@
                         const color = slot.customColor
                             || RAID_COLORS[activity]
                             || '#ffffff';
-                        const tagClass = slot.tag !== 'none' ? (TAG_CLASSES[slot.tag] || '') : '';
+                        const tagClass = TAG_CLASSES[slot.tag] || TAG_CLASSES.normal;
                         const tagLabel = slot.tag === 'custom'
                             ? (slot.customTag || 'Personnalisé')
-                            : (slot.tag !== 'none' ? (TAG_NAMES[slot.tag] || '') : '');
+                            : (TAG_NAMES[slot.tag] || TAG_NAMES.normal);
 
                         slotBlocks += `
                             <div class="slot-line">
@@ -1310,32 +1303,32 @@
             function loadDemo() {
                 weekData = [
                     { id: 0, name: 'Lundi', abbr: 'LUN', slots: [
-                            { active: true, activity: 'Caveau de verre', start: '08:00', tag: 'special', customTag: '' },
+                            { active: true, activity: 'Caveau de verre', start: '08:00', tag: 'normal', customTag: '' },
                             { active: true, activity: 'Chute du roi', start: '18:00', tag: 'roulette', customTag: '' }
                         ] },
                     { id: 1, name: 'Mardi', abbr: 'MAR', slots: [
-                            { active: false, activity: '', start: '08:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' },
-                            { active: true, activity: 'Dualité', start: '19:00', tag: 'chill', customTag: '' }
+                            { active: false, activity: '', start: '08:00', tag: 'normal', customTag: '', customActivity: '', customColor: '#ffffff' },
+                            { active: true, activity: 'Dualité', start: '19:00', tag: 'normal', customTag: '' }
                         ] },
                     { id: 2, name: 'Mercredi', abbr: 'MER', slots: [
-                            { active: true, activity: 'Serment du disciple', start: '09:00', tag: 'decouverte', customTag: '' },
-                            { active: false, activity: '', start: '18:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' }
+                            { active: true, activity: 'Serment du disciple', start: '09:00', tag: 'normal', customTag: '' },
+                            { active: false, activity: '', start: '18:00', tag: 'normal', customTag: '', customActivity: '', customColor: '#ffffff' }
                         ] },
                     { id: 3, name: 'Jeudi', abbr: 'JEU', slots: [
-                            { active: false, activity: '', start: '08:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' },
-                            { active: false, activity: '', start: '18:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' }
+                            { active: false, activity: '', start: '08:00', tag: 'normal', customTag: '', customActivity: '', customColor: '#ffffff' },
+                            { active: false, activity: '', start: '18:00', tag: 'normal', customTag: '', customActivity: '', customColor: '#ffffff' }
                         ] },
                     { id: 4, name: 'Vendredi', abbr: 'VEN', slots: [
-                            { active: true, activity: 'Origines des cauchemars', start: '10:00', tag: 'maitrise', customTag: '' },
-                            { active: true, activity: 'Étreinte de l\'Avarice', start: '20:00', tag: 'special' }
+                            { active: true, activity: 'Origines des cauchemars', start: '10:00', tag: 'normal', customTag: '' },
+                            { active: true, activity: 'Étreinte de l\'Avarice', start: '20:00', tag: 'normal' }
                         ] },
                     { id: 5, name: 'Samedi', abbr: 'SAM', slots: [
                             { active: true, activity: 'Dernier vœu', start: '14:00', tag: 'roulette', customTag: '' },
-                            { active: true, activity: 'Panthéon Calus', start: '21:00', tag: 'decouverte', customTag: '' }
+                            { active: true, activity: 'Panthéon Calus', start: '21:00', tag: 'normal', customTag: '' }
                         ] },
                     { id: 6, name: 'Dimanche', abbr: 'DIM', slots: [
-                            { active: true, activity: 'Crypte de la pierre', start: '11:00', tag: 'chill', customTag: '' },
-                            { active: false, activity: '', start: '18:00', tag: 'none', customTag: '', customActivity: '', customColor: '#ffffff' }
+                            { active: true, activity: 'Crypte de la pierre', start: '11:00', tag: 'normal', customTag: '' },
+                            { active: false, activity: '', start: '18:00', tag: 'normal', customTag: '', customActivity: '', customColor: '#ffffff' }
                         ] }
                 ];
                 updateAll();
@@ -1343,7 +1336,7 @@
 
             // ---------- PLANNING ALÉATOIRE ----------
             function randomizePlanning() {
-                const tags = ['roulette', 'special', 'decouverte', 'chill', 'maitrise'];
+                const tags = ['normal', 'roulette'];
                 const times = ['08:00', '09:00', '10:00', '11:00', '14:00', '18:00', '19:00', '20:00', '21:00'];
 
                 weekData.forEach(day => {
