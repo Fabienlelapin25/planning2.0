@@ -713,6 +713,52 @@
             }
         }
 
+    
+        /* ============================================================
+           GOLEM PLANNING v13 — LARGE WIDTH
+           Seulement la largeur. Le scroll vertical reste inchangé.
+           ============================================================ */
+
+        @media (min-width: 1660px) {
+            .app {
+                max-width: 1880px;
+                width: 100%;
+                gap: 20px;
+                justify-content: space-between;
+            }
+
+            .menu {
+                width: auto;
+                min-width: 760px;
+                flex: 1 1 760px;
+            }
+
+            .preview-wrapper {
+                flex: 0 0 auto;
+                margin-left: auto;
+            }
+
+            .slot-row .slot-label {
+                min-width: 62px;
+                flex: 0 0 62px;
+            }
+
+            .slot-row select:not(.tag-select) {
+                flex: 1 1 250px;
+                min-width: 220px;
+            }
+
+            .slot-row input[type="time"] {
+                flex: 0 0 92px;
+                min-width: 92px;
+            }
+
+            .slot-row .tag-select {
+                flex: 0 0 150px;
+                min-width: 150px;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -780,30 +826,32 @@
 
             const RAID_DATA = [
                 "Caveau de verre",
-                "Chute du roi",
-                "Origines des cauchemars",
                 "Chute de Cropta",
-                "Jardin du salut",
-                "Dernier vœu",
+                "Chute du roi",
                 "Crypte de la pierre",
-                "Serment du disciple",
+                "Dernier vœu",
                 "Désert perpétuel",
+                "Jardin du salut",
+                "Orée du Salut",
+                "Origines des cauchemars",
+                "Serment du disciple",
                 "Panthéon Calus",
                 "Panthéon Morgeth",
-                "Panthéon Insurrection Prime"
+                "Panthéon Insurrection Prime",
             ];
 
             const DONJON_DATA = [
+                "Dogme fragmenté",
+                "Dualité",
                 "Équilibre",
-                "Ruine de la Guerrière",
+                "Étreinte de l'Avarice",
                 "Fantôme des Profondeurs",
                 "Flèche de la Vigie",
-                "Trône Brisé",
-                "Hôte Vesper",
-                "Dualité",
                 "Fosse de l'Hérésie",
-                "Étreinte de l'Avarice",
-                "Prophétie"
+                "Hôte Vesper",
+                "Prophétie",
+                "Ruine de la Guerrière",
+                "Trône Brisé",
             ];
 
             const TAG_NAMES = {
@@ -830,7 +878,11 @@
                 "Désert perpétuel": "#b3e5fc",
                 "Panthéon Calus": "#ce93d8",
                 "Panthéon Morgeth": "#ffab91",
-                "Panthéon Insurrection Prime": "#a5d6a7"
+                "Panthéon Insurrection Prime": "#a5d6a7",
+                "Orée du Salut": "#d6d6d6",
+                "Dogme fragmenté": "#c8b7d8",
+                "Équilibre": "#9fc7c7",
+                "Hôte Vesper": "#c6a8d8",
             };
 
             const ALL_ACTIVITIES = [...RAID_DATA, ...DONJON_DATA, "Personnaliser"];
@@ -933,7 +985,7 @@
             function activityTypeFor(name) {
                 if (RAID_DATA.includes(name)) return 'Raid';
                 if (DONJON_DATA.includes(name)) return 'Donjon';
-                return 'Autre';
+                return 'Personnalisée';
             }
 
             function activityNameFor(slot) {
